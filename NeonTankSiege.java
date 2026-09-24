@@ -63,20 +63,25 @@ public final class NeonTankSiege extends Canvas implements Runnable, KeyListener
         }
     }
 
-    private NeonTankSiege(){
+    private NeonTankSiege(){this(false);}
+
+    private NeonTankSiege(boolean headless){
         setPreferredSize(new Dimension(WIDTH,HEIGHT));setIgnoreRepaint(true);
         setFocusable(true);addKeyListener(this);
-        JFrame frame=new JFrame("NEON TANK SIEGE");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setResizable(false);frame.add(this);frame.pack();
-        frame.setLocationRelativeTo(null);frame.setVisible(true);
-        createBufferStrategy(3);requestFocusInWindow();reset();state=0;
+        if(!headless){
+            JFrame frame=new JFrame("NEON TANK SIEGE");
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setResizable(false);frame.add(this);frame.pack();
+            frame.setLocationRelativeTo(null);frame.setVisible(true);
+            createBufferStrategy(3);requestFocusInWindow();
+        }
+        reset();state=0;
     }
 
     private void reset(){
         enemies.clear();bullets.clear();sparks.clear();
         lives=3;wave=1;score=kills=0;baseHealth=3;flash=playerInvulnerable=0;
-        player=new Tank(10*TILE,18*TILE,false,1);
+        player=new Tank(10*TILE+TILE*.5,17*TILE+TILE*.5,false,1);
         buildMap();beginWave();state=1;
     }
 
@@ -194,7 +199,7 @@ public final class NeonTankSiege extends Canvas implements Runnable, KeyListener
                 if(playerInvulnerable<=0&&Math.abs(b.x-player.x)<14&&Math.abs(b.y-player.y)<14){
                     burst(player.x,player.y,CYAN,18);it.remove();lives--;flash=.5;
                     playerInvulnerable=1.2;
-                    player.x=10*TILE;player.y=17*TILE+TILE*.5;
+                    player.x=10*TILE+TILE*.5;player.y=17*TILE+TILE*.5;
                     if(lives<=0)state=2;
                     continue;
                 }
@@ -325,6 +330,18 @@ public final class NeonTankSiege extends Canvas implements Runnable, KeyListener
     public void keyTyped(KeyEvent e){}
 
     public static void main(String[] args){
+        if(args.length>0&&"--self-test".equals(args[0])){
+            NeonTankSiege game=new NeonTankSiege(true);
+            double startX=game.player.x,startY=game.player.y;
+            if(game.blocked(startX,startY,12))throw new AssertionError("Spawn overlaps a wall");
+            game.move(game.player,-8,0);
+            if(game.player.x>=startX)throw new AssertionError("Player cannot move left");
+            game.move(game.player,8,0);
+            game.move(game.player,0,-8);
+            if(game.player.y>=startY)throw new AssertionError("Player cannot move up");
+            System.out.println("Movement self-test passed");
+            return;
+        }
         NeonTankSiege game=new NeonTankSiege();
         new Thread(game,"tank-game-loop").start();
     }
