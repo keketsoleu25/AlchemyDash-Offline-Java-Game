@@ -11,7 +11,7 @@ javac NeonTankSiege.java
 java NeonTankSiege
 ```
 
-Press **Enter** to begin. Move with **WASD** or **arrow keys** and hold **Space** to shoot. Destroy the enemy tanks before they hit the gold base: **one hit on the base ends the game**. Brick walls break section by section; steel and water block tanks, while foliage hides them. Clear a wave to advance to a refreshed stage. Press **R** after game over to restart.
+Press **Enter** to begin. Move with **WASD** or **arrow keys** and hold **Space** to shoot. Player and enemy bullets cancel each other when they collide. Destroy the enemy tanks before they hit the gold base: **one hit on the base ends the game**. Brick walls break section by section; steel and water block tanks, while foliage hides them. Clear a wave to advance to a refreshed stage. Press **R** after game over to restart.
 
 Enemy tanks drop rewards. Drive over the glowing icon to collect it:
 
