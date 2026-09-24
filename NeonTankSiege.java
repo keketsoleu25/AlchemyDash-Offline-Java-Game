@@ -51,10 +51,12 @@ public final class NeonTankSiege extends Canvas implements Runnable, KeyListener
         }
     }
     private static final class Bullet {
-        double x,y,vx,vy;
+        double x,y,previousX,previousY,vx,vy;
+        boolean dead;
         final boolean enemy;
         Bullet(double x,double y,int dir,boolean enemy){
             this.x=x;this.y=y;this.enemy=enemy;
+            previousX=x;previousY=y;
             double s=enemy?250:365;
             vx=dir==1?s:dir==3?-s:0;
             vy=dir==2?s:dir==0?-s:0;
@@ -217,6 +219,34 @@ public final class NeonTankSiege extends Canvas implements Runnable, KeyListener
         }
     }
 
+    private void moveAndClashBullets(double dt){
+        for(Bullet b:bullets){
+            b.previousX=b.x;b.previousY=b.y;
+            b.x+=b.vx*dt;b.y+=b.vy*dt;
+        }
+        for(int i=0;i<bullets.size();i++){
+            Bullet a=bullets.get(i);
+            if(a.dead)continue;
+            for(int j=i+1;j<bullets.size();j++){
+                Bullet b=bullets.get(j);
+                if(b.dead||a.enemy==b.enemy)continue;
+                double rx=a.previousX-b.previousX,ry=a.previousY-b.previousY;
+                double dx=(a.x-a.previousX)-(b.x-b.previousX);
+                double dy=(a.y-a.previousY)-(b.y-b.previousY);
+                double length=dx*dx+dy*dy;
+                double t=length==0?0:Math.max(0,Math.min(1,-(rx*dx+ry*dy)/length));
+                double cx=rx+dx*t,cy=ry+dy*t;
+                if(cx*cx+cy*cy<=8*8){
+                    a.dead=b.dead=true;
+                    double impactX=a.previousX+(a.x-a.previousX)*t;
+                    double impactY=a.previousY+(a.y-a.previousY)*t;
+                    burst(impactX,impactY,GOLD,8);
+                    break;
+                }
+            }
+        }
+    }
+
     private void spawnEnemy(){
         int[] columns={2,10,17};
         for(int attempt=0;attempt<3;attempt++){
@@ -268,8 +298,10 @@ public final class NeonTankSiege extends Canvas implements Runnable, KeyListener
             if(ox==e.x&&oy==e.y)e.decision=0;
             if(random.nextDouble()<dt*.85)shoot(e);
         }
+        moveAndClashBullets(dt);
         for(Iterator<Bullet> it=bullets.iterator();it.hasNext();){
-            Bullet b=it.next();b.x+=b.vx*dt;b.y+=b.vy*dt;
+            Bullet b=it.next();
+            if(b.dead){it.remove();continue;}
             if(b.x<0||b.y<0||b.x>=FIELD||b.y>=FIELD){it.remove();continue;}
             int col=(int)(b.x/TILE),row=(int)(b.y/TILE);
             int qx=(int)(b.x%TILE)/(TILE/2),qy=(int)(b.y%TILE)/(TILE/2);
@@ -508,7 +540,13 @@ public final class NeonTankSiege extends Canvas implements Runnable, KeyListener
             game.bullets.add(new Bullet(10*TILE+TILE*.5,18*TILE,2,true));
             game.update(STEP);
             if(game.state!=2)throw new AssertionError("Base did not fall on one hit");
-            System.out.println("Movement, walls, rewards and base self-test passed");
+            game.reset();
+            Bullet shot=new Bullet(100,100,1,false);
+            Bullet counter=new Bullet(110,100,3,true);
+            game.bullets.add(shot);game.bullets.add(counter);
+            game.moveAndClashBullets(STEP);
+            if(!shot.dead||!counter.dead)throw new AssertionError("Opposing bullets passed through");
+            System.out.println("Movement, walls, rewards, base and bullet clash self-test passed");
             return;
         }
         NeonTankSiege game=new NeonTankSiege();
