@@ -329,7 +329,14 @@ public final class NeonTankSiege extends Canvas implements Runnable, KeyListener
         }
         if(remaining==0&&enemies.isEmpty()){
             waveDelay+=dt;
-            if(waveDelay>2.2){wave++;score+=250;buildMap();beginWave();}
+            if(waveDelay>2.2){
+                wave++;score+=250;
+                bullets.clear();pickups.clear();
+                player.x=10*TILE+TILE*.5;player.y=17*TILE+TILE*.5;
+                player.dir=0;playerInvulnerable=2;
+                fortifyTimer=freezeTimer=shieldTimer=0;
+                buildMap();beginWave();
+            }
         }
     }
 
