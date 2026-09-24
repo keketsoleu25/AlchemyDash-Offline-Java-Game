@@ -1,21 +1,16 @@
-# NEON RYDER 3D
+# Neon Tank Siege
 
-A standalone, offline, first-person cyberpunk highway dodger written in raw Java.
-The renderer uses `Canvas` triple buffering, hand-written perspective projection,
-near-plane clipping and depth sorting. No engine, external library, assets or network access.
+A fully offline, original top-down tank defense game inspired by classic arcade tank games. Built with Java's standard AWT and Swing libraries. No assets or dependencies.
 
-## Run
+## Run on Windows
 
-Install Java 11 or newer. Download the repository ZIP, extract it, open a terminal
-inside the folder containing the five `.java` files, and run:
+Install JDK 11 or newer. Download the repository ZIP and extract it. In the extracted folder, click File Explorer's address bar, type `cmd`, press Enter, and run:
 
 ```cmd
-javac Vector3D.java Mesh3D.java GameObject.java Display.java GameEngine.java
-java GameEngine
+javac NeonTankSiege.java
+java NeonTankSiege
 ```
 
-Press **Enter** to launch. Steer with **WASD** or **arrow keys**. Fly through
-lime rings for points. Avoid cyan cubes and magenta pyramids. Each hit costs
-25% shields; **R** restarts after game over.
+Press **Enter** to begin. Move with **WASD** or **arrow keys** and hold **Space** to shoot. Destroy enemy tanks, break brick walls, and defend the gold base. Steel walls cannot be destroyed. Clear a wave for bonus points and a base repair. Press **R** after game over to restart.
 
-The fixed-step simulation targets 60 updates per second. FPS/TPS appear in the HUD.
+The older experimental 3D game remains available: compile `Vector3D.java Mesh3D.java GameObject.java Display.java GameEngine.java`, then run `java GameEngine`.
