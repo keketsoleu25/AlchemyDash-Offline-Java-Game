@@ -28,12 +28,15 @@ public final class NeonTankSiege extends Canvas implements Runnable, KeyListener
     private final List<Tank> enemies=new ArrayList<>();
     private final List<Bullet> bullets=new ArrayList<>();
     private final List<Particle> sparks=new ArrayList<>();
+    private final List<Pickup> pickups=new ArrayList<>();
     private final Random random=new Random();
     private volatile int input;
     private volatile boolean startPressed, restartPressed;
     private Tank player;
     private int state=0, lives=3, wave=1, score, kills, remaining, baseHealth=3;
     private double spawnTimer, waveDelay, flash, playerInvulnerable;
+    private double rewardMessageTimer;
+    private String rewardMessage="";
     private boolean running=true;
 
     private static final class Tank {
@@ -62,6 +65,10 @@ public final class NeonTankSiege extends Canvas implements Runnable, KeyListener
             this.x=x;this.y=y;this.vx=vx;this.vy=vy;this.color=color;life=.35;
         }
     }
+    private static final class Pickup {
+        double x,y,life=12;
+        Pickup(double x,double y){this.x=x;this.y=y;}
+    }
 
     private NeonTankSiege(){this(false);}
 
@@ -79,8 +86,9 @@ public final class NeonTankSiege extends Canvas implements Runnable, KeyListener
     }
 
     private void reset(){
-        enemies.clear();bullets.clear();sparks.clear();
+        enemies.clear();bullets.clear();sparks.clear();pickups.clear();
         lives=3;wave=1;score=kills=0;baseHealth=3;flash=playerInvulnerable=0;
+        rewardMessageTimer=0;rewardMessage="";
         player=new Tank(10*TILE+TILE*.5,17*TILE+TILE*.5,false,1);
         buildMap();beginWave();state=1;
     }
@@ -108,6 +116,33 @@ public final class NeonTankSiege extends Canvas implements Runnable, KeyListener
     }
 
     private void beginWave(){remaining=5+wave*2;spawnTimer=.3;waveDelay=0;}
+
+    private boolean occupiedTile(int x,int y){
+        double cx=x*TILE+TILE*.5,cy=y*TILE+TILE*.5;
+        if(Math.abs(player.x-cx)<TILE*.5+12&&Math.abs(player.y-cy)<TILE*.5+12)return true;
+        for(Tank enemy:enemies)
+            if(Math.abs(enemy.x-cx)<TILE*.5+12&&Math.abs(enemy.y-cy)<TILE*.5+12)return true;
+        return false;
+    }
+
+    private int rebuildBaseWalls(){
+        int restored=0;
+        for(int x=8;x<=12;x++){
+            if(x==10)continue; // The centre entrance stays open.
+            if(map[18][x]==EMPTY&&!occupiedTile(x,18)){map[18][x]=BRICK;restored++;}
+        }
+        for(int x:new int[]{8,12})
+            if(map[19][x]==EMPTY&&!occupiedTile(x,19)){map[19][x]=BRICK;restored++;}
+        return restored;
+    }
+
+    private void collectSpade(){
+        int repaired=rebuildBaseWalls();
+        score+=50;
+        rewardMessage=repaired>0?"SPADE: "+repaired+" WALLS REBUILT":"SPADE: BASE SECURED +50";
+        rewardMessageTimer=2.5;
+        burst(player.x,player.y,GOLD,22);
+    }
 
     private boolean blocked(double x,double y,double radius){
         if(x-radius<0||y-radius<0||x+radius>=FIELD||y+radius>=FIELD)return true;
@@ -160,6 +195,7 @@ public final class NeonTankSiege extends Canvas implements Runnable, KeyListener
         if(state!=1)return;
         flash=Math.max(0,flash-dt);
         playerInvulnerable=Math.max(0,playerInvulnerable-dt);
+        rewardMessageTimer=Math.max(0,rewardMessageTimer-dt);
         player.shot=Math.max(0,player.shot-dt);
         int h=(input&8)!=0?1:(input&4)!=0?-1:0;
         int v=(input&1)!=0?-1:(input&2)!=0?1:0;
@@ -209,7 +245,11 @@ public final class NeonTankSiege extends Canvas implements Runnable, KeyListener
                     Tank e=ei.next();
                     if(Math.abs(b.x-e.x)<15&&Math.abs(b.y-e.y)<15){
                         e.hp--;burst(e.x,e.y,RED,8);
-                        if(e.hp<=0){ei.remove();kills++;score+=100;burst(e.x,e.y,GOLD,14);}
+                        if(e.hp<=0){
+                            ei.remove();kills++;score+=100;burst(e.x,e.y,GOLD,14);
+                            if(kills%3==0||random.nextDouble()<.12)
+                                pickups.add(new Pickup(e.x,e.y));
+                        }
                         hit=true;break;
                     }
                 }
@@ -223,6 +263,13 @@ public final class NeonTankSiege extends Canvas implements Runnable, KeyListener
         for(Iterator<Particle> it=sparks.iterator();it.hasNext();){
             Particle p=it.next();p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;
             if(p.life<=0)it.remove();
+        }
+        for(Iterator<Pickup> it=pickups.iterator();it.hasNext();){
+            Pickup p=it.next();p.life-=dt;
+            if(p.life<=0){it.remove();continue;}
+            if(Math.abs(p.x-player.x)<23&&Math.abs(p.y-player.y)<23){
+                it.remove();collectSpade();
+            }
         }
         if(remaining==0&&enemies.isEmpty()){
             waveDelay+=dt;
@@ -261,6 +308,16 @@ public final class NeonTankSiege extends Canvas implements Runnable, KeyListener
         g.fillRoundRect(10*TILE-3,19*TILE+3,38,27,5,5);
         g.setColor(BG);g.fillOval(10*TILE+9,19*TILE+9,13,13);
         for(Bullet b:bullets){g.setColor(b.enemy?RED:GOLD);g.fillOval((int)b.x-4,(int)b.y-4,8,8);}
+        for(Pickup p:pickups){
+            double pulse=1+Math.sin(p.life*8)*.12;
+            int radius=(int)(16*pulse);
+            g.setColor(new Color(255,205,90,65));
+            g.fillOval((int)p.x-radius-5,(int)p.y-radius-5,(radius+5)*2,(radius+5)*2);
+            g.setColor(GOLD);g.fillOval((int)p.x-radius,(int)p.y-radius,radius*2,radius*2);
+            g.setColor(BG);g.setStroke(new BasicStroke(3));
+            g.drawLine((int)p.x,(int)p.y-9,(int)p.x,(int)p.y+4);
+            g.fillRoundRect((int)p.x-8,(int)p.y+2,16,8,3,3);
+        }
         for(Tank e:enemies)drawTank(g,e);
         if(flash<=0||((int)(flash*16)&1)==0)drawTank(g,player);
         for(Particle p:sparks){g.setColor(p.color);g.fillRect((int)p.x,(int)p.y,3,3);}
@@ -273,6 +330,11 @@ public final class NeonTankSiege extends Canvas implements Runnable, KeyListener
         g.drawString("LIVES  "+lives,FIELD+18,233);
         g.drawString("BASE   "+baseHealth+"/3",FIELD+18,272);
         g.drawString("ENEMIES "+(remaining+enemies.size()),FIELD+18,311);
+        g.setColor(GOLD);g.drawString("SPADE = REBUILD",FIELD+18,354);
+        if(rewardMessageTimer>0){
+            g.setColor(GOLD);g.setFont(new Font("Monospaced",Font.BOLD,16));
+            g.drawString(rewardMessage,18,34);
+        }
         g.setColor(Color.LIGHT_GRAY);g.setFont(new Font("Monospaced",Font.PLAIN,15));
         g.drawString("WASD / ARROWS",FIELD+18,430);
         g.drawString("MOVE TANK",FIELD+18,452);
@@ -339,6 +401,13 @@ public final class NeonTankSiege extends Canvas implements Runnable, KeyListener
             game.move(game.player,8,0);
             game.move(game.player,0,-8);
             if(game.player.y>=startY)throw new AssertionError("Player cannot move up");
+            game.map[18][9]=EMPTY;
+            if(game.rebuildBaseWalls()<1||game.map[18][9]!=BRICK)
+                throw new AssertionError("Spade did not rebuild the wall");
+            game.map[18][9]=EMPTY;
+            game.player.x=9*TILE+TILE*.5;game.player.y=18*TILE+TILE*.5;
+            game.rebuildBaseWalls();
+            if(game.map[18][9]!=EMPTY)throw new AssertionError("Spade trapped the player");
             System.out.println("Movement self-test passed");
             return;
         }
