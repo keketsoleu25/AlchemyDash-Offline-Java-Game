@@ -10,5 +10,5 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
-      - run: javac AlchemyDashV2.java
+          java-version: '11'
+      - run: javac -Xlint:all Vector3D.java Mesh3D.java GameObject.java Display.java GameEngine.java
