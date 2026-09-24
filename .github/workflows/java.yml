@@ -12,3 +12,4 @@ jobs:
           distribution: temurin
           java-version: '11'
       - run: javac -Xlint:all NeonTankSiege.java Vector3D.java Mesh3D.java GameObject.java Display.java GameEngine.java
+      - run: java NeonTankSiege --self-test
